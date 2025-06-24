@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, Plus, Trash2, RotateCcw, ChevronDown } from 'lucide-react';
+import { Play, Pause, Plus, Trash2, RotateCcw } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, onSnapshot, setDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 
@@ -28,11 +28,10 @@ const formatTime = (totalSeconds) => {
 
 // --- Animated Counter Component ---
 const AnimatedCounter = ({ value, formatter }) => {
-    const [displayValue, setDisplayValue] = useState(value);
-    useEffect(() => { setDisplayValue(value); }, [value]);
-    return <span className="transition-colors duration-300">{formatter(displayValue)}</span>;
+  const [displayValue, setDisplayValue] = useState(value);
+  useEffect(() => { setDisplayValue(value); }, [value]);
+  return <span className="transition-colors duration-300">{formatter(displayValue)}</span>;
 };
-
 
 // --- Main App Component ---
 export default function App() {
@@ -59,25 +58,26 @@ export default function App() {
         await window.microsoftTeams.app.initialize();
         const context = await window.microsoftTeams.app.getContext();
         const meetingId = context.meeting.id;
-        
+
         if (!meetingId) {
-            setError("This app can only be run in a Teams meeting.");
-            setIsLoading(false);
-            return;
+          setError("This app can only be run in a Teams meeting.");
+          setIsLoading(false);
+          return;
         }
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        // Pull config from Vercel environment variables
+        const appId = process.env.REACT_APP_APP_ID || 'default-app-id';
+        const firebaseConfig = process.env.REACT_APP_FIREBASE_CONFIG ? JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG) : null;
 
         if (!firebaseConfig) {
-            setError("Firebase configuration is missing.");
-            setIsLoading(false);
-            return;
+          setError("Firebase configuration is missing.");
+          setIsLoading(false);
+          return;
         }
 
         const app = initializeApp(firebaseConfig);
         const firestore = getFirestore(app);
-        
+
         // No authentication needed. Directly set the document reference.
         const docRef = doc(firestore, 'artifacts', appId, 'public/data/meetings', meetingId);
         setMeetingDocRef(docRef);
@@ -86,17 +86,17 @@ export default function App() {
         console.error(e);
         // Fallback for development outside of Teams
         console.warn("Running in fallback mode. Using a test meeting ID.");
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const appId = process.env.REACT_APP_APP_ID || 'default-app-id';
+        const firebaseConfig = process.env.REACT_APP_FIREBASE_CONFIG ? JSON.parse(process.env.REACT_APP_FIREBASE_CONFIG) : null;
         if (firebaseConfig) {
-            const app = initializeApp(firebaseConfig);
-            const firestore = getFirestore(app);
-            const testMeetingId = "test-meeting-no-auth";
-            const docRef = doc(firestore, 'artifacts', appId, 'public/data/meetings', testMeetingId);
-            setMeetingDocRef(docRef);
+          const app = initializeApp(firebaseConfig);
+          const firestore = getFirestore(app);
+          const testMeetingId = "test-meeting-no-auth";
+          const docRef = doc(firestore, 'artifacts', appId, 'public/data/meetings', testMeetingId);
+          setMeetingDocRef(docRef);
         } else {
-            setError("Failed to initialize. Firebase config missing.");
-            setIsLoading(false);
+          setError("Failed to initialize. Firebase config missing.");
+          setIsLoading(false);
         }
       }
     };
@@ -105,18 +105,16 @@ export default function App() {
 
   // --- Real-time Data Sync from Firestore ---
   useEffect(() => {
-    // This effect now runs as soon as the meetingDocRef is set.
     if (!meetingDocRef) return;
 
-    const unsubscribe = onSnapshot(meetingDocRef, (doc) => {
-      if (doc.exists()) {
-        const data = doc.data();
+    const unsubscribe = onSnapshot(meetingDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
         setParticipants(data.participants || []);
         setIsRunning(data.isRunning || false);
         setAccumulatedSeconds(data.accumulatedSeconds || 0);
         setStartTime(data.startTime || null);
       } else {
-        // Create the document if it doesn't exist on first load.
         setDoc(meetingDocRef, { participants: [], isRunning: false, accumulatedSeconds: 0, startTime: null });
       }
       setIsLoading(false);
@@ -149,13 +147,13 @@ export default function App() {
   }, [isRunning, participants, startTime, accumulatedSeconds, calculateCosts]);
 
   // --- Firestore Write Handlers ---
-    const handleAddParticipant = async (e) => {
-        e.preventDefault();
-        if (!newName.trim() || !newRole || !meetingDocRef) return;
-        const newParticipant = { id: Date.now(), name: newName.trim(), role: newRole, rate: JOB_ROLES[newRole].rate };
-        await setDoc(meetingDocRef, { participants: [...participants, newParticipant] }, { merge: true });
-        setNewName('');
-    };
+  const handleAddParticipant = async (e) => {
+    e.preventDefault();
+    if (!newName.trim() || !newRole || !meetingDocRef) return;
+    const newParticipant = { id: Date.now(), name: newName.trim(), role: newRole, rate: JOB_ROLES[newRole].rate };
+    await setDoc(meetingDocRef, { participants: [...participants, newParticipant] }, { merge: true });
+    setNewName('');
+  };
   const handleRemoveParticipant = async (id) => await setDoc(meetingDocRef, { participants: participants.filter(p => p.id !== id) }, { merge: true });
   const handleReset = async () => await setDoc(meetingDocRef, { participants: [], isRunning: false, accumulatedSeconds: 0, startTime: null });
   const handleToggleTimer = async () => {
@@ -175,7 +173,6 @@ export default function App() {
 
   return (
     <div className="bg-[#201F1F] text-white h-screen font-sans flex flex-col p-4 space-y-4 overflow-hidden">
-      {/* ... The rest of the UI is the same as the previous version ... */}
       <div className="w-full bg-gradient-to-br from-green-500/20 to-blue-500/20 p-4 rounded-xl shadow-lg border border-white/10 text-center">
         <p className="text-sm text-gray-300 uppercase tracking-wider">Total Meeting Cost</p>
         <p className="text-4xl font-bold text-green-300 tracking-tight"><AnimatedCounter value={totalCost} formatter={formatCurrency} /></p>
@@ -189,17 +186,34 @@ export default function App() {
         <button onClick={handleReset} className="flex items-center justify-center p-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 focus:ring-offset-gray-800"><RotateCcw size={18}/></button>
       </div>
       <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isFormVisible ? 'max-h-60' : 'max-h-0'}`}>
-          <form onSubmit={handleAddParticipant} className="bg-white/5 rounded-lg p-4 mt-2 space-y-3">
-            <input type="text" placeholder="Participant Name" value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"/>
-            <select value={newRole} onChange={(e) => setNewRole(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
-              {Object.keys(JOB_ROLES).map(role => (<option key={role} value={role}>{role}</option>))}
-            </select>
-            <button type="submit" className="w-full p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors">Add</button>
-          </form>
+        <form onSubmit={handleAddParticipant} className="bg-white/5 rounded-lg p-4 mt-2 space-y-3">
+          <input type="text" placeholder="Participant Name" value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"/>
+          <select value={newRole} onChange={(e) => setNewRole(e.target.value)} className="w-full bg-gray-700 border-gray-600 text-white rounded-md p-2 focus:ring-blue-500 focus:border-blue-500">
+            {Object.keys(JOB_ROLES).map(role => (<option key={role} value={role}>{role}</option>))}
+          </select>
+          <button type="submit" className="w-full p-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors">Add</button>
+        </form>
       </div>
       <div className="flex-grow overflow-y-auto pr-2 -mr-2">
-         <h2 className="text-lg font-semibold mb-2 text-gray-300">Participants ({participants.length})</h2>
-         {participants.length === 0 ? (<div className="flex items-center justify-center h-24 text-gray-500">Add participants to begin</div>) : (<ul className="space-y-2">{participants.map((p) => (<li key={p.id} className="bg-white/5 p-3 rounded-lg flex items-center justify-between shadow transition-all duration-300 ease-in-out motion-safe:animate-fade-in"><div><p className="font-semibold text-gray-200">{p.name}</p><p className="text-xs text-gray-400">{p.role}</p></div><div className="text-right flex items-center space-x-3"><p className="font-semibold text-green-400">{formatCurrency(getParticipantCost(p.rate))}</p><button onClick={() => handleRemoveParticipant(p.id)} className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/20 rounded-full transition-colors"><Trash2 size={16} /></button></div></li>))}</ul>)}
+        <h2 className="text-lg font-semibold mb-2 text-gray-300">Participants ({participants.length})</h2>
+        {participants.length === 0 ? (
+          <div className="flex items-center justify-center h-24 text-gray-500">Add participants to begin</div>
+        ) : (
+          <ul className="space-y-2">
+            {participants.map((p) => (
+              <li key={p.id} className="bg-white/5 p-3 rounded-lg flex items-center justify-between shadow transition-all duration-300 ease-in-out motion-safe:animate-fade-in">
+                <div>
+                  <p className="font-semibold text-gray-200">{p.name}</p>
+                  <p className="text-xs text-gray-400">{p.role}</p>
+                </div>
+                <div className="text-right flex items-center space-x-3">
+                  <p className="font-semibold text-green-400">{formatCurrency(getParticipantCost(p.rate))}</p>
+                  <button onClick={() => handleRemoveParticipant(p.id)} className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/20 rounded-full transition-colors"><Trash2 size={16} /></button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
