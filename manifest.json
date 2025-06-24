@@ -1,0 +1,46 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+  "packageName": "com.example.meetingcost",
+  "developer": {
+    "name": "Your Name",
+    "websiteUrl": "https://your-website-url.com",
+    "privacyUrl": "https://your-website-url.com/privacy",
+    "termsOfUseUrl": "https://your-website-url.com/terms"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "name": {
+    "short": "Cost Calculator",
+    "full": "Meeting Cost Calculator"
+  },
+  "description": {
+    "short": "Calculates the real-time cost of a meeting.",
+    "full": "This application tracks the cumulative cost of a meeting in real-time based on the roles of the participants. The data is synced for all users in the meeting."
+  },
+  "accentColor": "#FFFFFF",
+  "configurableTabs": [
+    {
+      "configurationUrl": "https://your-hosting-url.com/index.html",
+      "canUpdateConfiguration": true,
+      "scopes": [
+        "team",
+        "groupchat"
+      ],
+      "context": [
+        "meetingSidePanel"
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "your-hosting-url.com"
+  ]
+}
